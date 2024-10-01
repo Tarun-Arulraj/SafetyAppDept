@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "102516119694",
+    "firebase_url": "https://safety-app-6950c-default-rtdb.firebaseio.com",
+    "project_id": "safety-app-6950c",
+    "storage_bucket": "safety-app-6950c.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102516119694:android:0fb4ff04e811f991bbd1df",
+        "android_client_info": {
+          "package_name": "com.example.safetyapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2DEeoIs9PTzjwkRdEgwTQpSRUGR9pAF8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:102516119694:android:5c4600769b748db1bbd1df",
+        "android_client_info": {
+          "package_name": "com.example.safetyappdept"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA2DEeoIs9PTzjwkRdEgwTQpSRUGR9pAF8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

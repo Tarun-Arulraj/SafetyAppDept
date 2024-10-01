@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Safety App Dept</string>
+    <string name="register">Register</string>
+    <string name="login">Log In</string>
+    <string name="registerbutton">Register</string>
+    <string name="loginbutton">Log In</string>
+    <string name="username">Username</string>
+    <string name="depName">Department Name</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirmPassword">Confirm Password</string>
+    <string name="loginText">Already Have an Account? Click here to Log In</string>
+    <string name="registerText">Does not have an Account? Click here to Register</string>
+    <string name="open_nav">Open Navigation Drawer</string>
+    <string name="close_nav">Close Navigation Drawer</string>
+</resources>
