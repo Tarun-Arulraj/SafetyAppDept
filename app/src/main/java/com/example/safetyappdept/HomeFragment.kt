@@ -74,17 +74,26 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
 
         // Set a click listener for the button
         resolveButton.setOnClickListener {
-            // Remove the blue marker from the map
-            if (userMarker != null) {
-                userMarker?.remove()
-                userMarker = null
+            val alertDialog = AlertDialog.Builder(requireContext())
+            alertDialog.setTitle("Resolve Emergency")
+            alertDialog.setMessage("Is the emergency resolved?")
+            alertDialog.setPositiveButton("Yes") { _, _ ->
+                // Remove the blue marker from the map
+                if (userMarker != null) {
+                    userMarker?.remove()
+                    userMarker = null
+                }
+
+                // Hide the resolve button
+                resolveButton.visibility = View.GONE
+
+                // Display a message to the department
+                Toast.makeText(requireContext(), "Emergency resolved successfully", Toast.LENGTH_SHORT).show()
             }
-
-            // Hide the resolve button
-            resolveButton.visibility = View.GONE
-
-            // Display a message to the department
-            Toast.makeText(requireContext(), "Emergency resolved successfully", Toast.LENGTH_SHORT).show()
+            alertDialog.setNegativeButton("No") { _, _ ->
+                // Do nothing
+            }
+            alertDialog.show()
         }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.requireContext())
