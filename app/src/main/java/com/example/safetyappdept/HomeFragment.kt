@@ -15,6 +15,10 @@ import android.view.ViewGroup
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import com.android.volley.Request
+import com.android.volley.Response
+import com.android.volley.toolbox.JsonObjectRequest
+import com.android.volley.toolbox.Volley
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -32,6 +36,7 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
+import com.google.maps.android.PolyUtil
 
 class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
     private lateinit var myMap: GoogleMap
@@ -161,13 +166,25 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
         db.collection("users").document(userId).get().addOnSuccessListener { document ->
             if (document.exists()) {
                 val userName = document.get("name") as String
-                Log.d("User Name", "User name: $userName")
+                Log.d("User Name", "User  name: $userName")
 
                 // Display the notification on the screen
                 val alertDialog = AlertDialog.Builder(requireContext())
                 alertDialog.setTitle("Emergency Notification")
                 alertDialog.setMessage("User $userName needs assistance at location $location")
                 alertDialog.setPositiveButton("Respond") { _, _ ->
+                    // Remove the old marker if it exists
+                    if (userMarker != null) {
+                        userMarker?.remove()
+                    }
+
+                    // Display the user's location on the map
+                    val userLatLng = LatLng(location.latitude, location.longitude)
+                    val userMarkerOptions = MarkerOptions().position(userLatLng)
+                    userMarkerOptions.title("User Location")
+                    userMarker = myMap.addMarker(userMarkerOptions)
+                    myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
+
                     // Respond to the notification
                     respondToNotification(userId, location)
                     // Remove the notification from the database
@@ -201,13 +218,6 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                     }
                 }
                 alertDialog.show()
-
-                // Display the user's location on the map
-                val userLatLng = LatLng(location.latitude, location.longitude)
-                val userMarkerOptions = MarkerOptions().position(userLatLng)
-                userMarkerOptions.title("User Location")
-                userMarker = myMap.addMarker(userMarkerOptions)
-                myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
             } else {
                 Log.e("User Name", "User document does not exist")
             }
@@ -243,6 +253,31 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                         departmentMarkerOptions.title("Department Location")
                         departmentMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                         myMap.addMarker(departmentMarkerOptions)
+
+                        // Draw the route between the user and department locations
+                        val url = "https://maps.googleapis.com/maps/api/directions/json"
+                        val request = JsonObjectRequest(
+                            Request.Method.GET, url, null,
+                            { response ->
+                                val routes = response.getJSONArray("routes")
+                                val route = routes.getJSONObject(0)
+                                val overviewPolyline = route.getJSONObject("overview_polyline")
+                                val polylineString = overviewPolyline.getString("points")
+                                val polylineList = PolyUtil.decode(polylineString)
+                                polyline = myMap.addPolyline(
+                                    PolylineOptions()
+                                        .width(10f)
+                                        .geodesic(true)
+                                        .addAll(polylineList)
+                                )
+                            },
+                            { error ->
+                                Log.e("Error", "Error getting directions: $error")
+                            })
+
+                        // Set up the request queue
+                        val requestQueue = Volley.newRequestQueue(requireContext())
+                        requestQueue.add(request)
 
                         myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
                     } else {
