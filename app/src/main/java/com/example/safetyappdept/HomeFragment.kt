@@ -20,6 +20,7 @@ import androidx.fragment.app.Fragment
 import com.android.volley.Request
 import com.android.volley.Response
 import com.android.volley.toolbox.JsonObjectRequest
+import com.android.volley.toolbox.StringRequest
 import com.android.volley.toolbox.Volley
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -39,6 +40,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
 import com.google.maps.android.PolyUtil
+import org.json.JSONException
+import org.json.JSONObject
 
 class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener {
     private lateinit var myMap: GoogleMap
@@ -223,35 +226,11 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
 
                     // Respond to the notification
                     respondToNotification(userId, location)
-                    // Remove the notification from the database
-                    db.collection("notifications").whereEqualTo("userId", userId).get().addOnSuccessListener { querySnapshot ->
-                        if (querySnapshot.documents.isNotEmpty()) {
-                            val notificationId = querySnapshot.documents[0].id
-                            db.collection("notifications").document(notificationId).delete().addOnSuccessListener {
-                                Log.d("Notification", "Notification removed from database")
-                            }.addOnFailureListener { e ->
-                                Log.e("Notification", "Error removing notification from database", e)
-                            }
-                        }
-                    }.addOnFailureListener { e ->
-                        Log.e("Notification", "Error getting notification from database", e)
-                    }
+                    removeNotificationFromDatabase(userId)
                 }
                 alertDialog.setNegativeButton("Ignore") { _, _ ->
                     // Ignore the notification
-                    // Remove the notification from the database
-                    db.collection("notifications").whereEqualTo("userId", userId).get().addOnSuccessListener { querySnapshot ->
-                        if (querySnapshot.documents.isNotEmpty()) {
-                            val notificationId = querySnapshot.documents[0].id
-                            db.collection("notifications").document(notificationId).delete().addOnSuccessListener {
-                                Log.d("Notification", "Notification removed from database")
-                            }.addOnFailureListener { e ->
-                                Log.e("Notification", "Error removing notification from database", e)
-                            }
-                        }
-                    }.addOnFailureListener { e ->
-                        Log.e("Notification", "Error getting notification from database", e)
-                    }
+                    removeNotificationFromDatabase(userId)
                 }
                 alertDialog.show()
             } else {
@@ -262,12 +241,29 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
         }
     }
 
+    private fun removeNotificationFromDatabase(userId: String) {
+        // Remove the notification from the database
+        val db = FirebaseFirestore.getInstance()
+        db.collection("notifications").whereEqualTo("userId", userId).get().addOnSuccessListener { querySnapshot ->
+            if (querySnapshot.documents.isNotEmpty()) {
+                val notificationId = querySnapshot.documents[0].id
+                db.collection("notifications").document(notificationId).delete().addOnSuccessListener {
+                    Log.d("Notification", "Notification removed from database")
+                }.addOnFailureListener { e ->
+                    Log.e("Notification", "Error removing notification from database", e)
+                }
+            }
+        }.addOnFailureListener { e ->
+            Log.e("Notification", "Error getting notification from database", e)
+        }
+    }
+
     private fun respondToNotification(userId: String, location: Location) {
         try {
             // Get the department's current location from Firestore
             val db = FirebaseFirestore.getInstance()
             val departmentId = FirebaseAuth.getInstance().currentUser?.uid
-            if ( departmentId != null) {
+            if (departmentId != null) {
                 db.collection("departments").document(departmentId).get().addOnSuccessListener { document ->
                     if (document.exists()) {
                         val locationMap = document.get("location") as HashMap<*, *>
@@ -282,7 +278,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                             userMarker?.remove()
                         }
                         val userMarkerOptions = MarkerOptions().position(userLatLng)
-                        userMarkerOptions.title("User Location")
+                        userMarkerOptions.title("User  Location")
                         userMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                         userMarker = myMap.addMarker(userMarkerOptions)
                         val departmentMarkerOptions = MarkerOptions().position(departmentLatLng)
@@ -292,20 +288,33 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
 
                         // Draw the route between the user and department locations
                         val url = "https://maps.googleapis.com/maps/api/directions/json"
-                        val request = JsonObjectRequest(
-                            Request.Method.GET, url, null,
+                        val params = HashMap<String, String>()
+                        params["origin"] = "${departmentLocation.latitude},${departmentLocation.longitude}" // Department's location as origin
+                        params["destination"] = "${location.latitude},${location.longitude}" // User's location as destination
+                        params["key"] = "AIzaSyCVHc1BOnFGwq1E6xwEYGei3VYgHvVIgu8" // Replace with your actual API key
+
+                        val queryString = params.map { "${it.key}=${it.value}" }.joinToString("&")
+                        val fullUrl = "$url?$queryString"
+
+                        val request = StringRequest(
+                            Request.Method.GET, fullUrl,
                             { response ->
-                                val routes = response.getJSONArray("routes")
-                                val route = routes.getJSONObject(0)
-                                val overviewPolyline = route.getJSONObject("overview_polyline")
-                                val polylineString = overviewPolyline.getString("points")
-                                val polylineList = PolyUtil.decode(polylineString)
-                                polyline = myMap.addPolyline(
-                                    PolylineOptions()
-                                        .width(10f)
-                                        .geodesic(true)
-                                        .addAll(polylineList)
-                                )
+                                try {
+                                    val jsonObject = JSONObject(response)
+                                    val routes = jsonObject.getJSONArray("routes")
+                                    val route = routes.getJSONObject(0)
+                                    val overviewPolyline = route.getJSONObject("overview_polyline")
+                                    val polylineString = overviewPolyline.getString("points")
+                                    val polylineList = PolyUtil.decode(polylineString)
+                                    polyline = myMap.addPolyline(
+                                        PolylineOptions()
+                                            .width(10f)
+                                            .geodesic(true)
+                                            .addAll(polylineList)
+                                    )
+                                } catch (e: JSONException) {
+                                    Log.e("Error", "Error parsing JSON response: $e")
+                                }
                             },
                             { error ->
                                 Log.e("Error", "Error getting directions: $error")
