@@ -12,6 +12,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.Toast
 import androidx.compose.ui.graphics.Color
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
@@ -44,6 +46,8 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
     private var currentLocation: Location? = null
     private var userMarker: Marker? = null
     private var polyline: com.google.android.gms.maps.model.Polyline? = null
+    private lateinit var resolveButton: Button
+    private var userId: String? = null
 
     companion object {
         private const val LOCATION_REQUEST_CODE = 1
@@ -62,6 +66,25 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
         } else {
             // Handle the null case, e.g. show an error message
             println ("Error: Map fragment is null")
+        }
+
+        // Initialize the resolve button
+        resolveButton = view.findViewById(R.id.resolve_button)
+        resolveButton.visibility = View.GONE // Hide the button by default
+
+        // Set a click listener for the button
+        resolveButton.setOnClickListener {
+            // Remove the blue marker from the map
+            if (userMarker != null) {
+                userMarker?.remove()
+                userMarker = null
+            }
+
+            // Hide the resolve button
+            resolveButton.visibility = View.GONE
+
+            // Display a message to the department
+            Toast.makeText(requireContext(), "Emergency resolved successfully", Toast.LENGTH_SHORT).show()
         }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.requireContext())
@@ -161,17 +184,18 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
     }
 
     private fun displayNotification(userId: String, location: Location, message: String) {
+        this.userId = userId // Assign the userId to the class variable
         // Get the user's name from Firestore
         val db = FirebaseFirestore.getInstance()
         db.collection("users").document(userId).get().addOnSuccessListener { document ->
             if (document.exists()) {
                 val userName = document.get("name") as String
-                Log.d("User Name", "User  name: $userName")
+                Log.d("User  Name", "User   name: $userName")
 
                 // Display the notification on the screen
                 val alertDialog = AlertDialog.Builder(requireContext())
                 alertDialog.setTitle("Emergency Notification")
-                alertDialog.setMessage("User $userName needs assistance at location $location")
+                alertDialog.setMessage("User  $userName needs assistance at location $location")
                 alertDialog.setPositiveButton("Respond") { _, _ ->
                     // Remove the old marker if it exists
                     if (userMarker != null) {
@@ -181,9 +205,12 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                     // Display the user's location on the map
                     val userLatLng = LatLng(location.latitude, location.longitude)
                     val userMarkerOptions = MarkerOptions().position(userLatLng)
-                    userMarkerOptions.title("User Location")
+                    userMarkerOptions.title("User  Location")
                     userMarker = myMap.addMarker(userMarkerOptions)
                     myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
+
+                    // Show the resolve button
+                    resolveButton.visibility = View.VISIBLE
 
                     // Respond to the notification
                     respondToNotification(userId, location)
@@ -219,10 +246,10 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                 }
                 alertDialog.show()
             } else {
-                Log.e("User Name", "User document does not exist")
+                Log.e("User  Name", "User  document does not exist")
             }
         }.addOnFailureListener { e ->
-            Log.e("User Name", "Error getting user name: $e")
+            Log.e("User  Name", "Error getting user name: $e")
         }
     }
 
@@ -231,7 +258,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
             // Get the department's current location from Firestore
             val db = FirebaseFirestore.getInstance()
             val departmentId = FirebaseAuth.getInstance().currentUser?.uid
-            if (departmentId != null) {
+            if ( departmentId != null) {
                 db.collection("departments").document(departmentId).get().addOnSuccessListener { document ->
                     if (document.exists()) {
                         val locationMap = document.get("location") as HashMap<*, *>
