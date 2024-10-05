@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.net.Uri
 import android.os.Bundle
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -48,6 +49,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var currentLocation: Location? = null
     private var userMarker: Marker? = null
+    private var deptMarker: Marker? = null
     private var polyline: com.google.android.gms.maps.model.Polyline? = null
     private lateinit var resolveButton: Button
     private var userId: String? = null
@@ -171,17 +173,50 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
             ) == PackageManager.PERMISSION_GRANTED
         ) {
             myMap.isMyLocationEnabled = true
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null ) {
-                    currentLocation = location
-                    val currentLatLng = LatLng(location.latitude, location.longitude)
-                    placeMarkerOnMap(currentLatLng)
-                    myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
-                }
-            }
+            val locationRequest = LocationRequest.create().setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+            locationRequest.interval = 60000
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                object : LocationCallback() {
+                    override fun onLocationResult(locationResult: LocationResult) {
+                        val location = locationResult.lastLocation
+                        if (location != null) {
+                            currentLocation = location
+                            val currentLatLng = LatLng(location.latitude, location.longitude)
+                            // Remove the old marker
+                            if (deptMarker != null) {
+                                deptMarker?.remove()
+                            }
+                            // Add a new marker
+                            val deptMarkerOptions = MarkerOptions().position(currentLatLng)
+                            deptMarkerOptions.title("Department Location")
+                            deptMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                            deptMarker = myMap.addMarker(deptMarkerOptions)
+                            myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
+                            storeCurrentLocationInFirestore(location)
+                            updateDepartmentLocationInFirestore(location)
+                        }
+                    }
+                },
+                Looper.myLooper()
+            )
         } else {
             ActivityCompat.requestPermissions(this.requireActivity(), arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
                 LOCATION_REQUEST_CODE)
+        }
+    }
+
+    private fun updateDepartmentLocationInFirestore(location: Location) {
+        val db = FirebaseFirestore.getInstance()
+        val departmentId = FirebaseAuth.getInstance().currentUser?.uid
+        if (departmentId != null) {
+            db.collection("departments").document(departmentId).update("location", location)
+                .addOnSuccessListener {
+                    Log.d("Department Location", "Department location updated successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Department Location", "Error updating department location", e)
+                }
         }
     }
 
@@ -218,6 +253,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                     val userLatLng = LatLng(location.latitude, location.longitude)
                     val userMarkerOptions = MarkerOptions().position(userLatLng)
                     userMarkerOptions.title("User  Location")
+                    userMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                     userMarker = myMap.addMarker(userMarkerOptions)
                     myMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
 
@@ -271,6 +307,11 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                         departmentLocation.latitude = locationMap["latitude"] as Double
                         departmentLocation.longitude = locationMap["longitude"] as Double
 
+                        // Remove the old marker
+                        if (deptMarker != null) {
+                            deptMarker?.remove()
+                        }
+
                         // Display both locations on the map
                         val userLatLng = LatLng(location.latitude, location.longitude)
                         val departmentLatLng = LatLng(departmentLocation.latitude, departmentLocation.longitude)
@@ -278,13 +319,13 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                             userMarker?.remove()
                         }
                         val userMarkerOptions = MarkerOptions().position(userLatLng)
-                        userMarkerOptions.title("User  Location")
+                        userMarkerOptions.title("User   Location")
                         userMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                         userMarker = myMap.addMarker(userMarkerOptions)
                         val departmentMarkerOptions = MarkerOptions().position(departmentLatLng)
                         departmentMarkerOptions.title("Department Location")
                         departmentMarkerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                        myMap.addMarker(departmentMarkerOptions)
+                        deptMarker = myMap.addMarker(departmentMarkerOptions)
 
                         // Draw the route between the user and department locations
                         val url = "https://maps.googleapis.com/maps/api/directions/json"
@@ -334,6 +375,20 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
             }
         } catch (e: Exception) {
             Log.e("Respond to Notification", "Error responding to notification: $e")
+        }
+    }
+
+    private fun storeCurrentLocationInFirestore(location: Location) {
+        val db = FirebaseFirestore.getInstance()
+        val departmentId = FirebaseAuth.getInstance().currentUser?.uid
+        if (departmentId != null) {
+            db.collection("departments").document(departmentId).update("location", location)
+                .addOnSuccessListener {
+                    Log.d("Department Location", "Department location updated successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("Department Location", "Error updating department location", e)
+                }
         }
     }
 }
