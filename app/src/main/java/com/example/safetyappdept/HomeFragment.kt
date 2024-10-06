@@ -264,7 +264,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                     respondToNotification(userId, location)
                     removeNotificationFromDatabase(userId)
                 }
-                alertDialog.setNegativeButton("Ignore") { _, _ ->
+                alertDialog.setNegativeButton ("Ignore") { _, _ ->
                     // Ignore the notification
                     removeNotificationFromDatabase(userId)
                 }
@@ -334,8 +334,11 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                         params["destination"] = "${location.latitude},${location.longitude}" // User's location as destination
                         params["key"] = "AIzaSyCVHc1BOnFGwq1E6xwEYGei3VYgHvVIgu8" // Replace with your actual API key
 
-                        val queryString = params.map { "${it.key}=${it.value}" }.joinToString("&")
-                        val fullUrl = "$url?$queryString"
+                        val uri = Uri.parse(url).buildUpon()
+                        params.forEach { param ->
+                            uri.appendQueryParameter(param.key, param.value)
+                        }
+                        val fullUrl = uri.toString()
 
                         val request = StringRequest(
                             Request.Method.GET, fullUrl,
