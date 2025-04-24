@@ -1,4 +1,4 @@
-# SafetyApp
+# SafetyAppDept
 
 **SafetyApp** is a mobile application designed to ensure personal safety by allowing users to send emergency alerts to authorities with just a tap. The app features easy-to-use buttons corresponding to different emergency situations, and upon clicking any of these buttons, the user's live location is sent to the relevant authorities in real-time.
 
@@ -52,3 +52,6 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some feature'`).
 4. Push to the branch (`git push origin feature/NewFeature`).
 5. Open a Pull Request.
+
+This is the department side of SafetyApp
+For client side You can find the repository here: https://github.com/Tarun-Arulraj/SafetyApp
