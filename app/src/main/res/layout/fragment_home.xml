@@ -22,7 +22,6 @@
         android:text="Resolved"
         android:textColor="#263238"
         android:textSize="18sp"
-        app:cornerRadius="20dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         tools:ignore="VisualLintButtonSize"

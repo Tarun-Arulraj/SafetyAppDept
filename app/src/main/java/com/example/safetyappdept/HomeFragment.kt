@@ -133,14 +133,24 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
 
             querySnapshot?.forEach { document ->
                 val notificationData = document.data
-                val userId = notificationData["userId"] as String
-                val locationMap = notificationData["location"] as HashMap<*, *> // Get the location as a HashMap
-                val location = Location("") // Create a new Location object
-                location.latitude = locationMap["latitude"] as Double
-                location.longitude = locationMap["longitude"] as Double
-                val message = notificationData["message"] as String
-
-                // Display the notification on the screen
+                val userId = notificationData["userId"] as? String
+                val locationMap = notificationData["location"] as? HashMap<*, *>
+                val message = notificationData["message"] as? String
+// Check for null values
+                if (userId == null || locationMap == null || message == null) {
+                    Log.e("Notification", "Missing fields in notification data; skipping entry")
+                    return@forEach
+                }
+                val latitude = locationMap["latitude"] as? Double
+                val longitude = locationMap["longitude"] as? Double
+                if (latitude == null || longitude == null) {
+                    Log.e("Notification", "Invalid location coordinates; skipping")
+                    return@forEach
+                }
+                val location = Location("")
+                location.latitude = latitude
+                location.longitude = longitude
+// Now safe to proceed
                 displayNotification(userId, location, message)
             }
         }
