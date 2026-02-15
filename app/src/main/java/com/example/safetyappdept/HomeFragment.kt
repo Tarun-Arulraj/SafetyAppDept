@@ -252,7 +252,7 @@ class HomeFragment : Fragment(), OnMapReadyCallback, GoogleMap.OnMarkerClickList
                 // Display the notification on the screen
                 val alertDialog = AlertDialog.Builder(requireContext())
                 alertDialog.setTitle("Emergency Notification")
-                alertDialog.setMessage("User  $userName needs assistance at location $location")
+                alertDialog.setMessage("User $userName needs assistance at location $location")
                 alertDialog.setPositiveButton("Respond") { _, _ ->
                     // Remove the old marker if it exists
                     if (userMarker != null) {
